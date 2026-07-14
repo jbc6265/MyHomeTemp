@@ -3,6 +3,8 @@ const COUNTRY = 'KR';
 const REGION = 'kic';
 const BASE_URL = `https://api-${REGION}.lgthinq.com`;
 const SHEET_NAME = 'home_environment';
+const BUSAN_LATITUDE = 35.1796;
+const BUSAN_LONGITUDE = 129.0756;
 
 function headers_() {
   const props = PropertiesService.getScriptProperties();
@@ -163,6 +165,7 @@ function getDashboardData(options) {
     return {
       generatedAt: formatDateTime_(new Date()),
       refreshSeconds: WEBAPP_REFRESH_SECONDS,
+      busanWeather: getBusanWeather_(),
       latest: null,
       recentHour: [],
       recentDay: [],
@@ -191,6 +194,7 @@ function getDashboardData(options) {
     generatedAt: formatDateTime_(now),
     refreshSeconds: WEBAPP_REFRESH_SECONDS,
     rangeLabel: `${formatDateTime_(range.start)} - ${formatDateTime_(range.end)}`,
+    busanWeather: getBusanWeather_(),
     latest: latest ? toClientRow_(latest) : null,
     recentHour: rows.filter(row => row.timestampDate >= oneHourAgo).map(toClientRow_),
     recentDay: rows.filter(row => row.timestampDate >= oneDayAgo).map(toClientRow_),
@@ -198,6 +202,47 @@ function getDashboardData(options) {
     dailyRunTimes: buildDailyRunTimes_(selectedRows),
     recentRows: rows.slice(-12).map(toClientRow_)
   };
+}
+
+function getBusanWeather_() {
+  const url = [
+    'https://api.open-meteo.com/v1/forecast',
+    `?latitude=${BUSAN_LATITUDE}`,
+    `&longitude=${BUSAN_LONGITUDE}`,
+    '&current=temperature_2m,relative_humidity_2m',
+    `&timezone=${encodeURIComponent(WEBAPP_TIMEZONE)}`,
+    '&forecast_days=1'
+  ].join('');
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true
+    });
+
+    if (response.getResponseCode() >= 300) {
+      return {
+        available: false,
+        error: '부산 날씨를 불러오지 못했습니다.'
+      };
+    }
+
+    const data = JSON.parse(response.getContentText());
+    const current = data.current || {};
+
+    return {
+      available: true,
+      location: '부산',
+      temperature: toNumberOrNull_(current.temperature_2m),
+      humidity: toNumberOrNull_(current.relative_humidity_2m),
+      observedAt: current.time ? formatDateTime_(new Date(current.time)) : ''
+    };
+  } catch (error) {
+    return {
+      available: false,
+      error: '부산 날씨를 불러오지 못했습니다.'
+    };
+  }
 }
 
 function normalizeEnvironmentRow_(headers, row) {

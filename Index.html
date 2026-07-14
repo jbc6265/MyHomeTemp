@@ -71,6 +71,37 @@
       gap: 10px;
     }
 
+    .weather-pill {
+      min-width: 170px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .weather-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .weather-value {
+      margin-top: 4px;
+      color: var(--ink);
+      font-size: 18px;
+      font-weight: 850;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .weather-time {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
     .refresh-button {
       display: inline-flex;
       align-items: center;
@@ -350,6 +381,11 @@
         <p class="subtitle">LG ThinQ 데이터를 기반으로 5분마다 자동 갱신됩니다.</p>
       </div>
       <div class="topbar-actions">
+        <div class="weather-pill" id="busanWeather">
+          <div class="weather-label">부산 현재</div>
+          <div class="weather-value">-</div>
+          <div class="weather-time">날씨 불러오는 중</div>
+        </div>
         <button class="refresh-button" type="button" id="manualRefresh" title="지금 새로고침" aria-label="지금 새로고침">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20 11a8.1 8.1 0 0 0-14.5-4.9L4 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -497,6 +533,7 @@
 
     function renderDashboard(data) {
       setRefreshButtonLoading(false);
+      renderBusanWeather(data && data.busanWeather);
       if (!data || !data.latest) {
         document.getElementById('recentRows').innerHTML = '<tr><td colspan="7" class="empty">아직 기록된 데이터가 없습니다.</td></tr>';
         setRefreshState('기록된 데이터 없음');
@@ -541,6 +578,22 @@
 
     function setRefreshState(message) {
       document.getElementById('refreshState').textContent = message;
+    }
+
+    function renderBusanWeather(weather) {
+      const container = document.getElementById('busanWeather');
+      if (!container) return;
+
+      const value = container.querySelector('.weather-value');
+      const time = container.querySelector('.weather-time');
+      if (!weather || !weather.available) {
+        value.textContent = '-';
+        time.textContent = '부산 날씨 확인 실패';
+        return;
+      }
+
+      value.textContent = `${formatNumber(weather.temperature, 1, ' °C')} · ${formatNumber(weather.humidity, 0, ' %')}`;
+      time.textContent = weather.observedAt ? `${weather.observedAt} 기준` : '현재 기상 데이터';
     }
 
     function setRefreshButtonLoading(isLoading) {
