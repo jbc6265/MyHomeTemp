@@ -65,6 +65,34 @@
       white-space: nowrap;
     }
 
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .refresh-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      padding: 0;
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .refresh-button svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .refresh-button:disabled {
+      cursor: wait;
+      opacity: 0.55;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -299,6 +327,11 @@
         text-align: left;
       }
 
+      .topbar-actions {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
       .table-scroll {
         overflow-x: auto;
       }
@@ -316,7 +349,17 @@
         <h1>우리집 온습도 대시보드</h1>
         <p class="subtitle">LG ThinQ 데이터를 기반으로 5분마다 자동 갱신됩니다.</p>
       </div>
-      <div class="refresh" id="refreshState">데이터 불러오는 중...</div>
+      <div class="topbar-actions">
+        <button class="refresh-button" type="button" id="manualRefresh" title="지금 새로고침" aria-label="지금 새로고침">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8.1 8.1 0 0 0-14.5-4.9L4 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M4 4v4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M4 13a8.1 8.1 0 0 0 14.5 4.9L20 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M20 20v-4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+        <div class="refresh" id="refreshState">데이터 불러오는 중...</div>
+      </div>
     </header>
 
     <section class="cards">
@@ -439,6 +482,7 @@
 
     function loadDashboard() {
       setRefreshState('데이터 불러오는 중...');
+      setRefreshButtonLoading(true);
       const options = state.customRange || {};
 
       if (window.google && google.script && google.script.run) {
@@ -452,6 +496,7 @@
     }
 
     function renderDashboard(data) {
+      setRefreshButtonLoading(false);
       if (!data || !data.latest) {
         document.getElementById('recentRows').innerHTML = '<tr><td colspan="7" class="empty">아직 기록된 데이터가 없습니다.</td></tr>';
         setRefreshState('기록된 데이터 없음');
@@ -483,6 +528,7 @@
     }
 
     function renderError(error) {
+      setRefreshButtonLoading(false);
       setRefreshState('데이터를 불러오지 못했습니다.');
       document.getElementById('recentRows').innerHTML =
         `<tr><td colspan="7" class="error">${escapeHtml(error.message || String(error))}</td></tr>`;
@@ -495,6 +541,11 @@
 
     function setRefreshState(message) {
       document.getElementById('refreshState').textContent = message;
+    }
+
+    function setRefreshButtonLoading(isLoading) {
+      const button = document.getElementById('manualRefresh');
+      if (button) button.disabled = isLoading;
     }
 
     function renderTable(rows) {
@@ -763,6 +814,11 @@
         document.getElementById('rangeStart').value = toLocalInputValue(nextStart);
         document.getElementById('rangeEnd').value = toLocalInputValue(nextEnd);
         state.customRange = null;
+        loadDashboard();
+      });
+
+      document.getElementById('manualRefresh').addEventListener('click', () => {
+        if (state.refreshTimer) clearTimeout(state.refreshTimer);
         loadDashboard();
       });
     }
