@@ -373,6 +373,7 @@
       <article class="panel wide">
         <h2>일자별 가동시간</h2>
         <div class="note">각 기록 시점부터 다음 기록 전까지의 시간을 POWER_ON 상태로 집계합니다.</div>
+        <canvas class="chart run-chart" id="dailyRunChart"></canvas>
         <div class="table-scroll">
           <table>
             <thead>
@@ -474,6 +475,7 @@
       drawLineChart('selectedHumidity', data.selectedRange, 'dehumidifierCurrentHumidity', '#00877d', '%');
       renderTable(data.recentRows);
       renderDailyRunTimes(data.dailyRunTimes);
+      drawDailyRunChart(data.dailyRunTimes);
       document.getElementById('rangeState').textContent = `표시 기간: ${data.rangeLabel}`;
 
       setRefreshState(`마지막 갱신 ${data.generatedAt} · 5분마다 자동 새로고침`);
@@ -514,6 +516,7 @@
       const tbody = document.getElementById('dailyRunRows');
       if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty">선택 기간에 표시할 가동시간이 없습니다.</td></tr>';
+        drawDailyRunChart([]);
         return;
       }
 
@@ -524,6 +527,81 @@
           <td>${formatHours(row.dehumidifierPowerOnHours, row.dehumidifierPowerOnMinutes)}</td>
         </tr>
       `).join('');
+    }
+
+    function drawDailyRunChart(rows) {
+      const canvas = document.getElementById('dailyRunChart');
+      const ctx = canvas.getContext('2d');
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      if (!rows.length) {
+        drawEmpty(ctx, rect.width, rect.height, '선택 기간에 표시할 가동시간이 없습니다.');
+        return;
+      }
+
+      const padding = { top: 24, right: 24, bottom: 52, left: 52 };
+      const width = rect.width - padding.left - padding.right;
+      const height = rect.height - padding.top - padding.bottom;
+      const maxMinutes = Math.max(
+        60,
+        ...rows.flatMap(row => [
+          Number(row.acPowerOnMinutes) || 0,
+          Number(row.dehumidifierPowerOnMinutes) || 0
+        ])
+      );
+      const maxHours = Math.ceil(maxMinutes / 60);
+      const yMax = Math.max(1, maxHours * 60);
+      const groupWidth = width / rows.length;
+      const barWidth = Math.min(34, Math.max(8, groupWidth * 0.22));
+      const gap = Math.max(5, barWidth * 0.35);
+
+      ctx.strokeStyle = '#d9e0ea';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#637083';
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (height / 4) * i;
+        const minutes = yMax - (yMax / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + width, y);
+        ctx.stroke();
+        ctx.fillText(`${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)}h`, padding.left - 8, y);
+      }
+
+      rows.forEach((row, index) => {
+        const centerX = padding.left + groupWidth * index + groupWidth / 2;
+        const acMinutes = Number(row.acPowerOnMinutes) || 0;
+        const dehumidifierMinutes = Number(row.dehumidifierPowerOnMinutes) || 0;
+        const acHeight = (acMinutes / yMax) * height;
+        const dehumidifierHeight = (dehumidifierMinutes / yMax) * height;
+        const acX = centerX - barWidth - gap / 2;
+        const dehumidifierX = centerX + gap / 2;
+        const baseY = padding.top + height;
+
+        ctx.fillStyle = '#256fce';
+        ctx.fillRect(acX, baseY - acHeight, barWidth, acHeight);
+        ctx.fillStyle = '#00877d';
+        ctx.fillRect(dehumidifierX, baseY - dehumidifierHeight, barWidth, dehumidifierHeight);
+
+        ctx.fillStyle = '#637083';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(shortDateLabel(row.date), centerX, baseY + 10);
+      });
+
+      drawLegend(ctx, padding.left, 8, [
+        { label: '에어컨', color: '#256fce' },
+        { label: '제습기', color: '#00877d' }
+      ]);
     }
 
     function drawLineChart(canvasId, rows, field, color, unit) {
@@ -604,6 +682,21 @@
       ctx.fillText(message, width / 2, height / 2);
     }
 
+    function drawLegend(ctx, x, y, items) {
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      let offsetX = x;
+      items.forEach(item => {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(offsetX, y, 12, 12);
+        ctx.fillStyle = '#637083';
+        ctx.fillText(item.label, offsetX + 18, y + 6);
+        offsetX += 78;
+      });
+    }
+
     function statusMarkup(value) {
       const text = value || '-';
       const stateClass = text === 'POWER_ON' ? 'on' : text === 'POWER_OFF' ? 'off' : '';
@@ -630,6 +723,12 @@
 
     function formatHours(hours, minutes) {
       return `${Number(hours).toFixed(1)}시간 (${Math.round(minutes)}분)`;
+    }
+
+    function shortDateLabel(value) {
+      const parts = String(value).split('-');
+      if (parts.length === 3) return `${Number(parts[1])}/${Number(parts[2])}`;
+      return String(value);
     }
 
     function toLocalInputValue(date) {
