@@ -3,6 +3,19 @@ const COUNTRY = 'KR';
 const REGION = 'kic';
 const BASE_URL = `https://api-${REGION}.lgthinq.com`;
 const SHEET_NAME = 'home_environment';
+const ENVIRONMENT_HEADERS = [
+  'timestamp',
+  'ac_current_temperature',
+  'ac_target_temperature',
+  'ac_operation_mode',
+  'dehumidifier_current_humidity',
+  'dehumidifier_target_humidity',
+  'dehumidifier_operation_mode',
+  'dehumidifier_job_mode',
+  'dehumidifier_wind_strength',
+  'ac_raw_json',
+  'dehumidifier_raw_json'
+];
 const WEATHER_LOCATIONS = [
   { key: 'busan', name: '부산', latitude: 35.1796, longitude: 129.0756 },
   { key: 'ulsan', name: '울산', latitude: 35.5384, longitude: 129.3114 }
@@ -67,6 +80,15 @@ function logHomeEnvironment() {
     'airTemperature'
   ]);
 
+  const acTargetTemperature = findFirstValue_(acState, [
+    'targetTemperature',
+    'targetTemp',
+    'setTemperature',
+    'desiredTemperature',
+    'airConTargetTemperature',
+    'airconditionerTargetTemperature'
+  ]);
+
   const dehumidifierOperationMode = findValue_(dehumidifierState, 'dehumidifierOperationMode');
   const rawDehumidifierHumidity = findValue_(dehumidifierState, 'currentHumidity');
 
@@ -82,33 +104,44 @@ function logHomeEnvironment() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME)
     || SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEET_NAME);
 
+  appendEnvironmentRow_(sheet, {
+    timestamp: new Date(),
+    ac_current_temperature: acCurrentTemperature,
+    ac_target_temperature: acTargetTemperature,
+    ac_operation_mode: acOperationMode,
+    dehumidifier_current_humidity: dehumidifierHumidity,
+    dehumidifier_target_humidity: dehumidifierTargetHumidity,
+    dehumidifier_operation_mode: dehumidifierOperationMode,
+    dehumidifier_job_mode: dehumidifierJobMode,
+    dehumidifier_wind_strength: dehumidifierWindStrength,
+    ac_raw_json: JSON.stringify(acState),
+    dehumidifier_raw_json: JSON.stringify(dehumidifierState)
+  });
+}
+
+function appendEnvironmentRow_(sheet, record) {
+  const headers = ensureEnvironmentHeaders_(sheet);
+  sheet.appendRow(headers.map(header => record[header] === undefined ? '' : record[header]));
+}
+
+function ensureEnvironmentHeaders_(sheet) {
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      'timestamp',
-      'ac_current_temperature',
-      'ac_operation_mode',
-      'dehumidifier_current_humidity',
-      'dehumidifier_target_humidity',
-      'dehumidifier_operation_mode',
-      'dehumidifier_job_mode',
-      'dehumidifier_wind_strength',
-      'ac_raw_json',
-      'dehumidifier_raw_json'
-    ]);
+    sheet.appendRow(ENVIRONMENT_HEADERS);
+    return ENVIRONMENT_HEADERS.slice();
   }
 
-  sheet.appendRow([
-    new Date(),
-    acCurrentTemperature,
-    acOperationMode,
-    dehumidifierHumidity,
-    dehumidifierTargetHumidity,
-    dehumidifierOperationMode,
-    dehumidifierJobMode,
-    dehumidifierWindStrength,
-    JSON.stringify(acState),
-    JSON.stringify(dehumidifierState)
-  ]);
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0]
+    .map(header => String(header).trim())
+    .filter(Boolean);
+  const missingHeaders = ENVIRONMENT_HEADERS.filter(header => headers.indexOf(header) === -1);
+
+  if (missingHeaders.length) {
+    sheet.getRange(1, headers.length + 1, 1, missingHeaders.length).setValues([missingHeaders]);
+    return headers.concat(missingHeaders);
+  }
+
+  return headers;
 }
 
 function findValue_(obj, key) {
@@ -264,6 +297,7 @@ function normalizeEnvironmentRow_(headers, row) {
 
   const timestampDate = toDate_(record.timestamp);
   const acTemperature = toNumberOrNull_(record.ac_current_temperature);
+  const acTargetTemperature = toNumberOrNull_(record.ac_target_temperature);
   const rawHumidity = toNumberOrNull_(record.dehumidifier_current_humidity);
   const dehumidifierOperationMode = textOrBlank_(record.dehumidifier_operation_mode);
   const dehumidifierHumidity =
@@ -274,6 +308,7 @@ function normalizeEnvironmentRow_(headers, row) {
     timestamp: timestampDate ? formatDateTime_(timestampDate) : '',
     timeLabel: timestampDate ? Utilities.formatDate(timestampDate, WEBAPP_TIMEZONE, 'M/d HH:mm') : '',
     acCurrentTemperature: acTemperature,
+    acTargetTemperature,
     acOperationMode: textOrBlank_(record.ac_operation_mode) || '확인 전',
     dehumidifierCurrentHumidity: dehumidifierHumidity,
     dehumidifierTargetHumidity: toNumberOrNull_(record.dehumidifier_target_humidity),
@@ -288,6 +323,7 @@ function toClientRow_(row) {
     timestamp: row.timestamp,
     timeLabel: row.timeLabel,
     acCurrentTemperature: row.acCurrentTemperature,
+    acTargetTemperature: row.acTargetTemperature,
     acOperationMode: row.acOperationMode,
     dehumidifierCurrentHumidity: row.dehumidifierCurrentHumidity,
     dehumidifierTargetHumidity: row.dehumidifierTargetHumidity,

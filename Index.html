@@ -425,6 +425,7 @@
       <article class="card">
         <div class="label">현재 온도</div>
         <div class="value" id="currentTemp">-</div>
+        <div class="comfort" id="targetTempText">설정온도 확인 전</div>
       </article>
       <article class="card">
         <div class="label">에어컨 상태</div>
@@ -518,6 +519,7 @@
               <tr>
                 <th>시간</th>
                 <th>온도</th>
+                <th>설정온도</th>
                 <th>에어컨</th>
                 <th>습도</th>
                 <th>제습기</th>
@@ -558,13 +560,14 @@
       setRefreshButtonLoading(false);
       renderRegionalWeathers(data && data.regionalWeathers);
       if (!data || !data.latest) {
-        document.getElementById('recentRows').innerHTML = '<tr><td colspan="7" class="empty">아직 기록된 데이터가 없습니다.</td></tr>';
+        document.getElementById('recentRows').innerHTML = '<tr><td colspan="8" class="empty">아직 기록된 데이터가 없습니다.</td></tr>';
         setRefreshState('기록된 데이터 없음');
         return;
       }
 
       const latest = data.latest;
       document.getElementById('currentTemp').textContent = formatNumber(latest.acCurrentTemperature, 1, ' °C');
+      document.getElementById('targetTempText').textContent = targetTemperatureLabel(latest.acTargetTemperature);
       document.getElementById('currentHumidity').textContent =
         latest.dehumidifierCurrentHumidity === null ? '제습기 OFF' : formatNumber(latest.dehumidifierCurrentHumidity, 0, ' %');
       document.getElementById('comfortText').textContent = comfortLabel(latest.dehumidifierCurrentHumidity);
@@ -591,7 +594,7 @@
       setRefreshButtonLoading(false);
       setRefreshState('데이터를 불러오지 못했습니다.');
       document.getElementById('recentRows').innerHTML =
-        `<tr><td colspan="7" class="error">${escapeHtml(error.message || String(error))}</td></tr>`;
+        `<tr><td colspan="8" class="error">${escapeHtml(error.message || String(error))}</td></tr>`;
     }
 
     function scheduleRefresh(seconds) {
@@ -641,6 +644,7 @@
         <tr>
           <td>${escapeHtml(row.timeLabel)}</td>
           <td>${formatNumber(row.acCurrentTemperature, 1, ' °C')}</td>
+          <td>${formatNumber(row.acTargetTemperature, 1, ' °C')}</td>
           <td>${statusDotMarkup(row.acOperationMode)}</td>
           <td>${row.dehumidifierCurrentHumidity === null ? '-' : formatNumber(row.dehumidifierCurrentHumidity, 0, ' %')}</td>
           <td>${statusDotMarkup(row.dehumidifierOperationMode)}</td>
@@ -852,6 +856,14 @@
       if (humidity < 40) return '건조';
       if (humidity <= 60) return '쾌적';
       return '습함';
+    }
+
+    function targetTemperatureLabel(temperature) {
+      if (temperature === null || temperature === undefined || Number.isNaN(Number(temperature))) {
+        return '설정온도 확인 전';
+      }
+
+      return `설정 ${Number(temperature).toFixed(1)} °C`;
     }
 
     function formatNumber(value, digits, suffix) {
