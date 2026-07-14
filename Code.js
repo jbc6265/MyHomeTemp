@@ -3,8 +3,10 @@ const COUNTRY = 'KR';
 const REGION = 'kic';
 const BASE_URL = `https://api-${REGION}.lgthinq.com`;
 const SHEET_NAME = 'home_environment';
-const BUSAN_LATITUDE = 35.1796;
-const BUSAN_LONGITUDE = 129.0756;
+const WEATHER_LOCATIONS = [
+  { key: 'busan', name: '부산', latitude: 35.1796, longitude: 129.0756 },
+  { key: 'ulsan', name: '울산', latitude: 35.5384, longitude: 129.3114 }
+];
 
 function headers_() {
   const props = PropertiesService.getScriptProperties();
@@ -165,7 +167,7 @@ function getDashboardData(options) {
     return {
       generatedAt: formatDateTime_(new Date()),
       refreshSeconds: WEBAPP_REFRESH_SECONDS,
-      busanWeather: getBusanWeather_(),
+      regionalWeathers: getRegionalWeathers_(),
       latest: null,
       recentHour: [],
       recentDay: [],
@@ -194,7 +196,7 @@ function getDashboardData(options) {
     generatedAt: formatDateTime_(now),
     refreshSeconds: WEBAPP_REFRESH_SECONDS,
     rangeLabel: `${formatDateTime_(range.start)} - ${formatDateTime_(range.end)}`,
-    busanWeather: getBusanWeather_(),
+    regionalWeathers: getRegionalWeathers_(),
     latest: latest ? toClientRow_(latest) : null,
     recentHour: rows.filter(row => row.timestampDate >= oneHourAgo).map(toClientRow_),
     recentDay: rows.filter(row => row.timestampDate >= oneDayAgo).map(toClientRow_),
@@ -204,11 +206,15 @@ function getDashboardData(options) {
   };
 }
 
-function getBusanWeather_() {
+function getRegionalWeathers_() {
+  return WEATHER_LOCATIONS.map(getWeatherForLocation_);
+}
+
+function getWeatherForLocation_(location) {
   const url = [
     'https://api.open-meteo.com/v1/forecast',
-    `?latitude=${BUSAN_LATITUDE}`,
-    `&longitude=${BUSAN_LONGITUDE}`,
+    `?latitude=${location.latitude}`,
+    `&longitude=${location.longitude}`,
     '&current=temperature_2m,relative_humidity_2m',
     `&timezone=${encodeURIComponent(WEBAPP_TIMEZONE)}`,
     '&forecast_days=1'
@@ -222,8 +228,10 @@ function getBusanWeather_() {
 
     if (response.getResponseCode() >= 300) {
       return {
+        key: location.key,
+        location: location.name,
         available: false,
-        error: '부산 날씨를 불러오지 못했습니다.'
+        error: `${location.name} 날씨를 불러오지 못했습니다.`
       };
     }
 
@@ -231,16 +239,19 @@ function getBusanWeather_() {
     const current = data.current || {};
 
     return {
+      key: location.key,
       available: true,
-      location: '부산',
+      location: location.name,
       temperature: toNumberOrNull_(current.temperature_2m),
       humidity: toNumberOrNull_(current.relative_humidity_2m),
       observedAt: current.time ? formatDateTime_(new Date(current.time)) : ''
     };
   } catch (error) {
     return {
+      key: location.key,
+      location: location.name,
       available: false,
-      error: '부산 날씨를 불러오지 못했습니다.'
+      error: `${location.name} 날씨를 불러오지 못했습니다.`
     };
   }
 }
