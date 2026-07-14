@@ -177,6 +177,13 @@
       margin-top: 12px;
     }
 
+    .target-prefix {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+
     .status {
       display: inline-flex;
       align-items: center;
@@ -577,10 +584,10 @@
 
       const latest = data.latest;
       document.getElementById('currentTemp').textContent = formatNumber(latest.acCurrentTemperature, 1, ' °C');
-      document.getElementById('targetTempText').textContent = targetTemperatureLabel(latest.acTargetTemperature);
+      document.getElementById('targetTempText').innerHTML = targetTemperatureMarkup(latest.acTargetTemperature);
       document.getElementById('currentHumidity').textContent =
         latest.dehumidifierCurrentHumidity === null ? '제습기 OFF' : formatNumber(latest.dehumidifierCurrentHumidity, 0, ' %');
-      document.getElementById('targetHumidityText').textContent = targetHumidityLabel(latest.dehumidifierTargetHumidity);
+      document.getElementById('targetHumidityText').innerHTML = targetHumidityMarkup(latest.dehumidifierTargetHumidity);
       document.getElementById('comfortText').textContent = comfortLabel(latest.dehumidifierCurrentHumidity);
       document.getElementById('acStatus').innerHTML = statusMarkup(latest.acOperationMode);
       document.getElementById('dehumidifierStatus').innerHTML = statusMarkup(latest.dehumidifierOperationMode);
@@ -870,20 +877,20 @@
       return '습함';
     }
 
-    function targetTemperatureLabel(temperature) {
+    function targetTemperatureMarkup(temperature) {
       if (temperature === null || temperature === undefined || Number.isNaN(Number(temperature))) {
         return '설정온도 확인 전';
       }
 
-      return `설정 ${Number(temperature).toFixed(1)} °C`;
+      return `<span class="target-prefix">설정</span> ${Number(temperature).toFixed(1)} °C`;
     }
 
-    function targetHumidityLabel(humidity) {
+    function targetHumidityMarkup(humidity) {
       if (humidity === null || humidity === undefined || Number.isNaN(Number(humidity))) {
         return '설정습도 확인 전';
       }
 
-      return `설정 ${Number(humidity).toFixed(0)} %`;
+      return `<span class="target-prefix">설정</span> ${Number(humidity).toFixed(0)} %`;
     }
 
     function formatNumber(value, digits, suffix) {
