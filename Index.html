@@ -330,6 +330,27 @@
       margin-top: 14px;
     }
 
+    .run-chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .run-chart-card {
+      min-width: 0;
+    }
+
+    .run-chart-title {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .run-chart-card .chart {
+      margin-top: 8px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -367,6 +388,10 @@
     @media (max-width: 900px) {
       .cards,
       .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .run-chart-grid {
         grid-template-columns: 1fr;
       }
 
@@ -492,7 +517,16 @@
       <article class="panel wide">
         <h2>일자별 가동시간</h2>
         <div class="note">각 기록 시점부터 다음 기록 전까지의 시간을 POWER_ON 상태로 집계합니다.</div>
-        <canvas class="chart run-chart" id="dailyRunChart"></canvas>
+        <div class="run-chart-grid">
+          <div class="run-chart-card">
+            <div class="run-chart-title">에어컨 가동시간</div>
+            <canvas class="chart run-chart" id="dailyAcRunChart"></canvas>
+          </div>
+          <div class="run-chart-card">
+            <div class="run-chart-title">제습기 가동시간</div>
+            <canvas class="chart run-chart" id="dailyDehumidifierRunChart"></canvas>
+          </div>
+        </div>
         <div class="table-scroll">
           <table>
             <thead>
@@ -601,7 +635,7 @@
       drawLineChart('selectedHumidity', data.selectedRange, 'dehumidifierCurrentHumidity', '#00877d', '%');
       renderTable(data.recentRows);
       renderDailyRunTimes(data.dailyRunTimes);
-      drawDailyRunChart(data.dailyRunTimes);
+      drawDailyRunCharts(data.dailyRunTimes);
       document.getElementById('rangeState').textContent = `표시 기간: ${data.rangeLabel}`;
 
       setRefreshState(`마지막 갱신 ${data.generatedAt} · 5분마다 자동 새로고침`);
@@ -677,7 +711,7 @@
       const tbody = document.getElementById('dailyRunRows');
       if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty">선택 기간에 표시할 가동시간이 없습니다.</td></tr>';
-        drawDailyRunChart([]);
+        drawDailyRunCharts([]);
         return;
       }
 
@@ -690,8 +724,13 @@
       `).join('');
     }
 
-    function drawDailyRunChart(rows) {
-      const canvas = document.getElementById('dailyRunChart');
+    function drawDailyRunCharts(rows) {
+      drawSingleDailyRunChart('dailyAcRunChart', rows, 'acPowerOnMinutes', '#256fce', '에어컨');
+      drawSingleDailyRunChart('dailyDehumidifierRunChart', rows, 'dehumidifierPowerOnMinutes', '#00877d', '제습기');
+    }
+
+    function drawSingleDailyRunChart(canvasId, rows, field, color, label) {
+      const canvas = document.getElementById(canvasId);
       const ctx = canvas.getContext('2d');
       const ratio = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -710,16 +749,12 @@
       const height = rect.height - padding.top - padding.bottom;
       const maxMinutes = Math.max(
         60,
-        ...rows.flatMap(row => [
-          Number(row.acPowerOnMinutes) || 0,
-          Number(row.dehumidifierPowerOnMinutes) || 0
-        ])
+        ...rows.map(row => Number(row[field]) || 0)
       );
       const maxHours = Math.ceil(maxMinutes / 60);
       const yMax = Math.max(1, maxHours * 60);
       const groupWidth = width / rows.length;
-      const barWidth = Math.min(34, Math.max(8, groupWidth * 0.22));
-      const gap = Math.max(5, barWidth * 0.35);
+      const barWidth = Math.min(46, Math.max(10, groupWidth * 0.35));
 
       ctx.strokeStyle = '#d9e0ea';
       ctx.lineWidth = 1;
@@ -740,18 +775,13 @@
 
       rows.forEach((row, index) => {
         const centerX = padding.left + groupWidth * index + groupWidth / 2;
-        const acMinutes = Number(row.acPowerOnMinutes) || 0;
-        const dehumidifierMinutes = Number(row.dehumidifierPowerOnMinutes) || 0;
-        const acHeight = (acMinutes / yMax) * height;
-        const dehumidifierHeight = (dehumidifierMinutes / yMax) * height;
-        const acX = centerX - barWidth - gap / 2;
-        const dehumidifierX = centerX + gap / 2;
+        const minutes = Number(row[field]) || 0;
+        const barHeight = (minutes / yMax) * height;
+        const barX = centerX - barWidth / 2;
         const baseY = padding.top + height;
 
-        ctx.fillStyle = '#256fce';
-        ctx.fillRect(acX, baseY - acHeight, barWidth, acHeight);
-        ctx.fillStyle = '#00877d';
-        ctx.fillRect(dehumidifierX, baseY - dehumidifierHeight, barWidth, dehumidifierHeight);
+        ctx.fillStyle = color;
+        ctx.fillRect(barX, baseY - barHeight, barWidth, barHeight);
 
         ctx.fillStyle = '#637083';
         ctx.textAlign = 'center';
@@ -759,10 +789,7 @@
         ctx.fillText(shortDateLabel(row.date), centerX, baseY + 10);
       });
 
-      drawLegend(ctx, padding.left, 8, [
-        { label: '에어컨', color: '#256fce' },
-        { label: '제습기', color: '#00877d' }
-      ]);
+      drawLegend(ctx, padding.left, 8, [{ label, color }]);
     }
 
     function drawLineChart(canvasId, rows, field, color, unit) {
