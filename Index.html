@@ -341,6 +341,11 @@
       min-width: 0;
     }
 
+    .run-chart-scroll {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
     .run-chart-title {
       color: var(--muted);
       font-size: 12px;
@@ -516,15 +521,19 @@
       </article>
       <article class="panel wide">
         <h2>일자별 가동시간</h2>
-        <div class="note">각 기록 시점부터 다음 기록 전까지의 시간을 POWER_ON 상태로 집계합니다.</div>
+        <div class="note">전체 누적 기록을 하루 단위로 나누어 POWER_ON 시간을 집계합니다.</div>
         <div class="run-chart-grid">
           <div class="run-chart-card">
             <div class="run-chart-title">에어컨 가동시간</div>
-            <canvas class="chart run-chart" id="dailyAcRunChart"></canvas>
+            <div class="run-chart-scroll">
+              <canvas class="chart run-chart" id="dailyAcRunChart"></canvas>
+            </div>
           </div>
           <div class="run-chart-card">
             <div class="run-chart-title">제습기 가동시간</div>
-            <canvas class="chart run-chart" id="dailyDehumidifierRunChart"></canvas>
+            <div class="run-chart-scroll">
+              <canvas class="chart run-chart" id="dailyDehumidifierRunChart"></canvas>
+            </div>
           </div>
         </div>
         <div class="table-scroll">
@@ -731,6 +740,13 @@
 
     function drawSingleDailyRunChart(canvasId, rows, field, color, label) {
       const canvas = document.getElementById(canvasId);
+      const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+      const minimumWidth = Math.max(parentWidth, 220);
+      const desiredWidth = rows.length > 0
+        ? Math.max(minimumWidth, rows.length * 68 + 92)
+        : minimumWidth;
+      canvas.style.width = `${desiredWidth}px`;
+
       const ctx = canvas.getContext('2d');
       const ratio = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();

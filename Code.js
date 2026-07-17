@@ -234,7 +234,7 @@ function getDashboardData(options) {
     recentHour: rows.filter(row => row.timestampDate >= oneHourAgo).map(toClientRow_),
     recentDay: rows.filter(row => row.timestampDate >= oneDayAgo).map(toClientRow_),
     selectedRange: selectedRows.map(toClientRow_),
-    dailyRunTimes: buildDailyRunTimes_(selectedRows),
+    dailyRunTimes: buildDailyRunTimes_(rows),
     recentRows: rows.slice(-12).map(toClientRow_)
   };
 }
