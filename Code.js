@@ -90,12 +90,7 @@ function logHomeEnvironment() {
   ]);
 
   const dehumidifierOperationMode = findValue_(dehumidifierState, 'dehumidifierOperationMode');
-  const rawDehumidifierHumidity = findValue_(dehumidifierState, 'currentHumidity');
-
-  const dehumidifierHumidity =
-    dehumidifierOperationMode === 'POWER_OFF' || rawDehumidifierHumidity === 0
-      ? ''
-      : rawDehumidifierHumidity;
+  const dehumidifierHumidity = findValue_(dehumidifierState, 'currentHumidity');
 
   const dehumidifierTargetHumidity = findValue_(dehumidifierState, 'targetHumidity');
   const dehumidifierJobMode = findValue_(dehumidifierState, 'currentJobMode');
@@ -298,10 +293,7 @@ function normalizeEnvironmentRow_(headers, row) {
   const timestampDate = toDate_(record.timestamp);
   const acTemperature = toNumberOrNull_(record.ac_current_temperature);
   const acTargetTemperature = toNumberOrNull_(record.ac_target_temperature);
-  const rawHumidity = toNumberOrNull_(record.dehumidifier_current_humidity);
   const dehumidifierOperationMode = textOrBlank_(record.dehumidifier_operation_mode);
-  const dehumidifierHumidity =
-    dehumidifierOperationMode === 'POWER_OFF' || rawHumidity === 0 ? null : rawHumidity;
 
   return {
     timestampDate,
@@ -310,7 +302,7 @@ function normalizeEnvironmentRow_(headers, row) {
     acCurrentTemperature: acTemperature,
     acTargetTemperature,
     acOperationMode: textOrBlank_(record.ac_operation_mode) || '확인 전',
-    dehumidifierCurrentHumidity: dehumidifierHumidity,
+    dehumidifierCurrentHumidity: toNumberOrNull_(record.dehumidifier_current_humidity),
     dehumidifierTargetHumidity: toNumberOrNull_(record.dehumidifier_target_humidity),
     dehumidifierOperationMode,
     dehumidifierJobMode: textOrBlank_(record.dehumidifier_job_mode),

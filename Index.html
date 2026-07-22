@@ -516,7 +516,7 @@
       </article>
       <article class="panel">
         <h2>선택 기간 습도 추이</h2>
-        <div class="note">제습기 ON 상태의 유효 습도만 표시, %</div>
+        <div class="note">제습기 전원 상태와 무관하게 기록된 습도, %</div>
         <canvas class="chart" id="selectedHumidity"></canvas>
       </article>
       <article class="panel wide">
@@ -556,7 +556,7 @@
       </article>
       <article class="panel">
         <h2>최근 1시간 습도 추이</h2>
-        <div class="note">제습기 ON 상태의 유효 습도만 표시, %</div>
+        <div class="note">제습기 전원 상태와 무관하게 기록된 습도, %</div>
         <canvas class="chart" id="hourHumidity"></canvas>
       </article>
       <article class="panel">
@@ -566,7 +566,7 @@
       </article>
       <article class="panel">
         <h2>최근 24시간 습도 추이</h2>
-        <div class="note">제습기 OFF 습도 공란은 차트에서 건너뜁니다.</div>
+        <div class="note">제습기 전원 상태와 무관하게 기록된 습도, %</div>
         <canvas class="chart" id="dayHumidity"></canvas>
       </article>
       <article class="panel wide">
@@ -629,7 +629,7 @@
       document.getElementById('currentTemp').textContent = formatNumber(latest.acCurrentTemperature, 1, ' °C');
       document.getElementById('targetTempText').innerHTML = targetTemperatureMarkup(latest.acTargetTemperature);
       document.getElementById('currentHumidity').textContent =
-        latest.dehumidifierCurrentHumidity === null ? '제습기 OFF' : formatNumber(latest.dehumidifierCurrentHumidity, 0, ' %');
+        formatNumber(latest.dehumidifierCurrentHumidity, 0, ' %');
       document.getElementById('targetHumidityText').innerHTML = targetHumidityMarkup(latest.dehumidifierTargetHumidity);
       document.getElementById('comfortText').textContent = comfortLabel(latest.dehumidifierCurrentHumidity);
       document.getElementById('acStatus').innerHTML = statusMarkup(latest.acOperationMode);
@@ -914,7 +914,7 @@
     }
 
     function comfortLabel(humidity) {
-      if (humidity === null || humidity === undefined) return '습도: 제습기 OFF';
+      if (humidity === null || humidity === undefined) return '습도 확인 전';
       if (humidity < 40) return '건조';
       if (humidity <= 60) return '쾌적';
       return '습함';
