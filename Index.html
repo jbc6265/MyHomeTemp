@@ -67,10 +67,16 @@
 
     .topbar {
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 16px;
       margin-bottom: 22px;
+    }
+
+    .topbar-title {
+      flex: 1 1 410px;
+      min-width: 410px;
     }
 
     h1 {
@@ -78,6 +84,7 @@
       font-size: 30px;
       line-height: 1.15;
       letter-spacing: 0;
+      white-space: nowrap;
     }
 
     .subtitle {
@@ -96,6 +103,9 @@
     .topbar-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      flex: 999 1 640px;
+      flex-wrap: wrap;
       gap: 10px;
     }
 
@@ -499,13 +509,24 @@
         flex-direction: column;
       }
 
+      .topbar-title {
+        min-width: 0;
+        width: 100%;
+      }
+
+      h1 {
+        white-space: normal;
+      }
+
       .refresh {
         text-align: left;
       }
 
       .topbar-actions {
         align-items: flex-start;
+        justify-content: flex-start;
         flex-direction: column;
+        width: 100%;
       }
 
       .weather-group {
@@ -531,7 +552,7 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <div>
+      <div class="topbar-title">
         <h1>우리집 온습도 대시보드</h1>
         <p class="subtitle">LG ThinQ 데이터를 기반으로 5분마다 자동 갱신됩니다.</p>
       </div>
