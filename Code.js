@@ -178,7 +178,7 @@ const WEBAPP_REFRESH_SECONDS = 300;
 const WEBAPP_TIMEZONE = 'Asia/Seoul';
 
 function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
+  return HtmlService.createTemplateFromFile('index')
     .evaluate()
     .setTitle('우리집 온습도 대시보드')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
