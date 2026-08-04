@@ -922,12 +922,12 @@
       const teal = cssVar('--teal');
       const temperatureScale = { min: 25, max: 30 };
       const humidityScale = { min: 50, max: 70 };
-      drawLineChart('hourTemp', data.recentHour, 'acCurrentTemperature', blue, '°C', temperatureScale);
-      drawLineChart('hourHumidity', data.recentHour, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
-      drawLineChart('dayTemp', data.recentDay, 'acCurrentTemperature', blue, '°C', temperatureScale);
-      drawLineChart('dayHumidity', data.recentDay, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
+      drawLineChart('hourTemp', data.recentHour, 'acCurrentTemperature', blue, '°C', temperatureScale, '온도');
+      drawLineChart('hourHumidity', data.recentHour, 'dehumidifierCurrentHumidity', teal, '%', humidityScale, '습도');
+      drawLineChart('dayTemp', data.recentDay, 'acCurrentTemperature', blue, '°C', temperatureScale, '온도');
+      drawLineChart('dayHumidity', data.recentDay, 'dehumidifierCurrentHumidity', teal, '%', humidityScale, '습도');
       drawLineChart('selectedTemp', data.selectedRange, 'acCurrentTemperature', blue, '°C', temperatureScale, '온도');
-      drawLineChart('selectedHumidity', data.selectedRange, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
+      drawLineChart('selectedHumidity', data.selectedRange, 'dehumidifierCurrentHumidity', teal, '%', humidityScale, '습도');
       renderTable(data.recentRows);
       renderDailyRunTimes(data.dailyRunTimes);
       drawDailyRunCharts(data.dailyRunTimes);
