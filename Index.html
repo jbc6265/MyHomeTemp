@@ -507,6 +507,7 @@
     }
 
     .run-chart-scroll {
+      position: relative;
       overflow-x: auto;
       padding-bottom: 4px;
     }
@@ -523,6 +524,46 @@
 
     .table-scroll {
       overflow-x: auto;
+    }
+
+    .daily-run-table-scroll {
+      max-height: 360px;
+      margin-top: 16px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+    }
+
+    .daily-run-table-scroll table {
+      margin-top: 0;
+    }
+
+    .daily-run-table-scroll thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .chart-tooltip {
+      position: fixed;
+      z-index: 20;
+      max-width: min(260px, calc(100vw - 24px));
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .chart-tooltip strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 13px;
     }
 
     table {
@@ -740,7 +781,7 @@
             </div>
           </div>
         </div>
-        <div class="table-scroll">
+        <div class="table-scroll daily-run-table-scroll" tabindex="0" aria-label="일자별 가동시간 전체 데이터">
           <table>
             <thead>
               <tr>
@@ -798,9 +839,12 @@
     </section>
   </main>
 
+  <div class="chart-tooltip" id="chartTooltip" role="tooltip" hidden></div>
+
   <script>
     const state = {
       charts: new Map(),
+      dailyRunHitAreas: new Map(),
       refreshTimer: null,
       customRange: null
     };
@@ -948,6 +992,8 @@
 
     function drawSingleDailyRunChart(canvasId, rows, field, color, label) {
       const canvas = document.getElementById(canvasId);
+      state.dailyRunHitAreas.set(canvasId, []);
+      bindDailyRunTooltip(canvas, canvasId);
       const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
       const minimumWidth = Math.max(parentWidth, 220);
       const desiredWidth = rows.length > 0
@@ -992,6 +1038,7 @@
         ctx.fillText(`${(minutes / 60).toFixed(minutes % 60 === 0 ? 0 : 1)}h`, padding.left - 8, y);
       }
 
+      const hitAreas = [];
       rows.forEach((row, index) => {
         const centerX = padding.left + groupWidth * index + groupWidth / 2;
         const minutes = Math.min(yMax, Math.max(0, Number(row[field]) || 0));
@@ -1006,9 +1053,73 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         ctx.fillText(shortDateLabel(row.date), centerX, baseY + 10);
+
+        hitAreas.push({
+          x: barX,
+          y: baseY - Math.max(barHeight, 3),
+          width: barWidth,
+          height: Math.max(barHeight, 3),
+          date: row.date,
+          label,
+          minutes: Math.max(0, Number(row[field]) || 0)
+        });
       });
 
+      state.dailyRunHitAreas.set(canvasId, hitAreas);
       drawLegend(ctx, padding.left, 8, [{ label, color }]);
+    }
+
+    function bindDailyRunTooltip(canvas, canvasId) {
+      if (canvas.dataset.tooltipBound === 'true') return;
+      canvas.dataset.tooltipBound = 'true';
+
+      canvas.addEventListener('mousemove', event => {
+        const hit = (state.dailyRunHitAreas.get(canvasId) || []).find(area =>
+          event.offsetX >= area.x &&
+          event.offsetX <= area.x + area.width &&
+          event.offsetY >= area.y &&
+          event.offsetY <= area.y + area.height
+        );
+
+        canvas.style.cursor = hit ? 'pointer' : 'default';
+        if (!hit) {
+          hideChartTooltip();
+          return;
+        }
+
+        showChartTooltip(hit, event.clientX, event.clientY);
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        canvas.style.cursor = 'default';
+        hideChartTooltip();
+      });
+    }
+
+    function showChartTooltip(hit, clientX, clientY) {
+      const tooltip = document.getElementById('chartTooltip');
+      tooltip.innerHTML = `${escapeHtml(hit.date)}<strong>${escapeHtml(hit.label)} ${formatHours(hit.minutes / 60, hit.minutes)}</strong>`;
+      tooltip.hidden = false;
+
+      const gap = 14;
+      const margin = 12;
+      const rect = tooltip.getBoundingClientRect();
+      let left = clientX + gap;
+      let top = clientY + gap;
+
+      if (left + rect.width > window.innerWidth - margin) {
+        left = clientX - rect.width - gap;
+      }
+      if (top + rect.height > window.innerHeight - margin) {
+        top = clientY - rect.height - gap;
+      }
+
+      tooltip.style.left = `${Math.max(margin, left)}px`;
+      tooltip.style.top = `${Math.max(margin, top)}px`;
+    }
+
+    function hideChartTooltip() {
+      document.getElementById('chartTooltip').hidden = true;
     }
 
     function drawLineChart(canvasId, rows, field, color, unit, fixedScale) {
