@@ -878,6 +878,7 @@
     const state = {
       charts: new Map(),
       dailyRunHitAreas: new Map(),
+      lineChartHitAreas: new Map(),
       refreshTimer: null,
       customRange: null
     };
@@ -925,7 +926,7 @@
       drawLineChart('hourHumidity', data.recentHour, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
       drawLineChart('dayTemp', data.recentDay, 'acCurrentTemperature', blue, '°C', temperatureScale);
       drawLineChart('dayHumidity', data.recentDay, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
-      drawLineChart('selectedTemp', data.selectedRange, 'acCurrentTemperature', blue, '°C', temperatureScale);
+      drawLineChart('selectedTemp', data.selectedRange, 'acCurrentTemperature', blue, '°C', temperatureScale, '온도');
       drawLineChart('selectedHumidity', data.selectedRange, 'dehumidifierCurrentHumidity', teal, '%', humidityScale);
       renderTable(data.recentRows);
       renderDailyRunTimes(data.dailyRunTimes);
@@ -1132,6 +1133,17 @@
     function showChartTooltip(hit, clientX, clientY) {
       const tooltip = document.getElementById('chartTooltip');
       tooltip.innerHTML = `${escapeHtml(hit.date)}<strong>${escapeHtml(hit.label)} ${formatHours(hit.minutes / 60, hit.minutes)}</strong>`;
+      positionChartTooltip(tooltip, clientX, clientY);
+    }
+
+    function showLineChartTooltip(point, tooltipLabel, unit, clientX, clientY) {
+      const tooltip = document.getElementById('chartTooltip');
+      const digits = unit === '%' ? 0 : 1;
+      tooltip.innerHTML = `시간 ${escapeHtml(point.label)}<strong>${escapeHtml(tooltipLabel)} ${Number(point.value).toFixed(digits)} ${escapeHtml(unit)}</strong>`;
+      positionChartTooltip(tooltip, clientX, clientY);
+    }
+
+    function positionChartTooltip(tooltip, clientX, clientY) {
       tooltip.hidden = false;
 
       const gap = 14;
@@ -1155,8 +1167,40 @@
       document.getElementById('chartTooltip').hidden = true;
     }
 
-    function drawLineChart(canvasId, rows, field, color, unit, fixedScale) {
+    function bindLineChartTooltip(canvas, canvasId, tooltipLabel, unit) {
+      if (canvas.dataset.lineTooltipBound === 'true') return;
+      canvas.dataset.lineTooltipBound = 'true';
+
+      canvas.addEventListener('mousemove', event => {
+        const chart = state.lineChartHitAreas.get(canvasId);
+        if (!chart || !chart.points.length ||
+          event.offsetX < chart.bounds.left || event.offsetX > chart.bounds.right ||
+          event.offsetY < chart.bounds.top || event.offsetY > chart.bounds.bottom) {
+          canvas.style.cursor = 'default';
+          hideChartTooltip();
+          return;
+        }
+
+        const nearest = chart.points.reduce((best, point) =>
+          Math.abs(point.x - event.offsetX) < Math.abs(best.x - event.offsetX) ? point : best
+        );
+
+        canvas.style.cursor = 'crosshair';
+        showLineChartTooltip(nearest, tooltipLabel, unit, event.clientX, event.clientY);
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        canvas.style.cursor = 'default';
+        hideChartTooltip();
+      });
+    }
+
+    function drawLineChart(canvasId, rows, field, color, unit, fixedScale, tooltipLabel) {
       const canvas = document.getElementById(canvasId);
+      if (tooltipLabel) {
+        state.lineChartHitAreas.set(canvasId, { points: [], bounds: {} });
+        bindLineChartTooltip(canvas, canvasId, tooltipLabel, unit);
+      }
       const ctx = canvas.getContext('2d');
       const ratio = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -1210,14 +1254,27 @@
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.beginPath();
-      points.forEach((point, idx) => {
+      const plottedPoints = points.map((point, idx) => {
         const x = padding.left + (points.length === 1 ? 0 : width * idx / (points.length - 1));
         const boundedValue = Math.min(max, Math.max(min, Number(point.value)));
         const y = padding.top + height - ((boundedValue - min) / (max - min)) * height;
         if (idx === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
+        return { x, y, label: point.label, value: Number(point.value) };
       });
       ctx.stroke();
+
+      if (tooltipLabel) {
+        state.lineChartHitAreas.set(canvasId, {
+          points: plottedPoints,
+          bounds: {
+            left: padding.left,
+            right: padding.left + width,
+            top: padding.top,
+            bottom: padding.top + height
+          }
+        });
+      }
 
       ctx.fillStyle = cssVar('--muted');
       ctx.textAlign = 'left';
